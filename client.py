@@ -1,5 +1,5 @@
+import threading
 from socket import *
-from _thread import *
 
 HOST = "192.168.56.1"
 PORT = 8000
@@ -28,7 +28,8 @@ def new_thread():
             print("< MyDB", server_reply)
 
 
-start_new_thread(new_thread, ())
+t1 = threading.Thread(target=new_thread)
+t1.start()
 
 while True:
     user_input = input()
