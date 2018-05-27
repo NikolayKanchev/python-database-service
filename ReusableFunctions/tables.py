@@ -1,5 +1,4 @@
 from pythonDatabase.Model.table import Table
-from pythonDatabase.ReusableFunctions.send_receive import send_receive
 
 
 def create_table(user_input, user):

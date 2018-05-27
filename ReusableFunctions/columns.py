@@ -39,7 +39,7 @@ def get_list_columns(addr, table_name, list_users):
 
     table = user.get_table(table_name)
 
-    columns_names = table.get_list_columns()
+    columns_names = table.get_columns_names()
 
     str_columns = " Columns in " + table_name + " :\n"
 

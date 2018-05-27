@@ -1,5 +1,6 @@
 import threading
 from socket import *
+from texttable import Texttable
 
 HOST = "192.168.56.1"
 PORT = 8000
@@ -14,24 +15,54 @@ except error:
 
 
 # region gets the user input and sends it to the server
-while True:
-    user_input = input("Choose an option:\n"
-                        "1) Menu\n"
-                        "2) Write SQL\n")
-    if user_input == '1' or user_input == '2':
-        s.send(str.encode(user_input))
-        break
+s.send(str.encode('2'))
+
+# while True:
+#     user_input = input("Choose an option:\n"
+#                         "1) Menu\n"
+#                         "2) Write SQL\n")
+#     if user_input == '1' or user_input == '2':
+#         s.send(str.encode(user_input))
+#         break
 # endregion
 
 
 # region function for the new thread, which only listens for server response
 def new_thread():
+
     server_reply = str(s.recv(1024), "UTF-8")
+
     print(f"< MyDB > { server_reply }")
 
     while server_reply != "":
+
         server_reply = str(s.recv(1024), "UTF-8")
-        print(f"< MyDB > { server_reply }")
+
+        arrays = []
+
+        if server_reply[0] == "[":
+
+            server_reply = server_reply[2:-2]
+
+            arr = server_reply.split("], [")
+
+            for element in arr:
+
+                row_arr = element.split(", ")
+
+                arrays.append(row_arr)
+
+        if len(arrays) != 0:
+
+            t = Texttable()
+
+            t.add_rows(arrays)
+
+            print(t.draw())
+
+        else:
+
+            print(f"< MyDB > { server_reply }")
 
 
 t1 = threading.Thread(target=new_thread)

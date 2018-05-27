@@ -5,6 +5,7 @@ from _thread import *
 from pythonDatabase.ReusableFunctions.others import *
 from pythonDatabase.ReusableFunctions.tables import *
 from pythonDatabase.ReusableFunctions.columns import *
+from pythonDatabase.Server.sql_functions import *
 
 HOST, PORT = '', 8000
 
@@ -357,7 +358,7 @@ def on_sql_login(sql_elements, addr, con):
 
     else:
 
-        send(con, "< SQL-mode > You are logged in !")
+        send(con, "You are logged in !")
 
         return True
 
@@ -373,60 +374,116 @@ def on_sql_mode(addr, con):
 
         sql_elements = sql_string.split()
 
-        if not logged_in:
+        try:
+            if not logged_in:
 
-            if sql_elements[0] == "REGISTER":
+                if sql_elements[0] == "REGISTER":
 
-                logged_in = on_sql_register(sql_elements, addr, con)
+                    logged_in = on_sql_register(sql_elements, addr, con)
 
-            elif sql_elements[0] == "LOGIN":
+                elif sql_elements[0] == "LOGIN":
 
-                logged_in = on_sql_login(sql_elements, addr, con)
+                    logged_in = on_sql_login(sql_elements, addr, con)
+
+                else:
+                    send(con, "You need to login or register first !")
 
             else:
-                send(con, "You need to login or register first !")
 
-        else:
+                if sql_elements[0] == "REGISTER" or sql_elements[0] == "LOGIN":
 
-            if sql_elements[0] == "REGISTER" or sql_elements[0] == "LOGIN":
+                    send(con, "You you are logged in, so you can't log in or register again!")
 
-                send(con, "You you are logged in, so you can't log in or register again!")
+                elif sql_elements[0] == "CREATE":
 
-            elif sql_elements[0] == "CREATE":
+                    if sql_elements[1] and sql_elements[1] == "DATABASE":
 
-                on_sql_create_table(sql_elements, addr, con)
+                        on_sql_create_database(sql_elements, addr, con, list_users)
 
-            elif sql_elements[0] == "DROP":
+                    elif sql_elements[1] and sql_elements[1] == "TABLE":
 
-                on_sql_drop_table(sql_elements, addr, con)
+                        on_sql_create_table(sql_elements, addr, con, list_users)
 
-            elif sql_elements[0] == "RENAME":
+                    else:
 
-                on_sql_rename_table(sql_elements, addr, con)
+                        send(con, f"Check your syntax near '{sql_elements[0]} {sql_elements[1]}'")
 
-            elif sql_elements[0] == "ADD":
+                        continue
 
-                on_sql_add_column(sql_elements, addr, con)
+                elif sql_elements[0] == "DROP":
 
-            elif sql_elements[0] == "REMOVE":
+                    if sql_elements[1] and sql_elements[1] == "DATABASE":
 
-                on_sql_remove_column(sql_elements, addr, con)
+                        on_sql_drop_database(sql_elements, addr, con, list_users)
 
-            elif sql_elements[0] == "EDIT":
+                    elif sql_elements[1] and sql_elements[1] == "TABLE":
 
-                on_sql_edit_column(sql_elements, addr, con)
+                        on_sql_drop_table(sql_elements, addr, con, list_users)
 
-            elif sql_elements[0] == "INSERT":
+                    else:
 
-                on_insert(sql_elements, addr, con)
+                        send(con, f"Check your syntax near '{sql_elements[0]} {sql_elements[1]}'")
 
-            elif sql_elements[0] == "SELECT":
+                        continue
 
-                on_select(sql_elements, addr, con)
+                elif sql_elements[0] == "RENAME":
 
-            elif sql_elements[0] == "DELETE":
+                    if sql_elements[1] and sql_elements[1] == "DATABASE":
 
-                on_delete(sql_elements, addr, con)
+                        on_sql_rename_database(sql_elements, addr, con, list_users)
+
+                    elif sql_elements[1] and sql_elements[1] == "TABLE":
+
+                        on_sql_rename_table(sql_elements, addr, con, list_users)
+
+                    else:
+
+                        send(con, f"Check your syntax near '{sql_elements[0]} {sql_elements[1]}'")
+
+                        continue
+
+                elif sql_elements[0] == "ALTER" and sql_elements[1] == "TABLE":
+
+                    if sql_elements[3] == "ADD":
+
+                        on_sql_add_column(sql_elements, addr, con, list_users)
+
+                    elif sql_elements[3] == "DROP" and sql_elements[4] == "COLUMN":
+
+                        on_sql_drop_column(sql_elements, addr, con, list_users)
+
+                    elif sql_elements[3] == "ALTER" and sql_elements[4] == "COLUMN":
+
+                        on_sql_change_column_type(sql_elements, addr, con, list_users)
+
+                    else:
+
+                        send(con, f"Check your syntax near '{sql_elements[0]} {sql_elements[1]}'")
+
+                        continue
+
+                elif sql_elements[0] == "INSERT" and sql_elements[1] == "INTO":
+
+                    on_sql_insert(sql_elements, addr, con, list_users)
+
+                elif sql_elements[0] == "SELECT":
+
+                    on_sql_select(sql_elements, addr, con, list_users)
+
+                elif sql_elements[0] == "DELETE":
+
+                    on_sql_delete(sql_elements, addr, con, list_users)
+
+                else:
+
+                    send(con, f"Check your syntax near '{sql_elements[0]}'")
+
+                    continue
+
+        except IndexError as ie:
+
+            send(con, "ERROR - Not enough arguments !")
+
 
 
 # endregion
