@@ -4,6 +4,7 @@ from pythonDatabase.Model.row import Row
 from pythonDatabase.Model.row_element import RowElement
 from pythonDatabase.Model.table import Table
 from pythonDatabase.ReusableFunctions.send_receive import *
+from collections import Counter
 
 
 def on_sql_create_database(sql_elements, addr, con, list_users):
@@ -517,6 +518,9 @@ def on_sql_insert(sql_elements, addr, con, list_users):
 
     if len(sql_elements) > 5:
 
+        database_name = None
+        table_name = None
+
         try:
             database_name, table_name = sql_elements[2].split(".")
 
@@ -639,10 +643,126 @@ def on_sql_insert(sql_elements, addr, con, list_users):
         send(con, "ERROR - 'Not enough arguments !'")
 
 
+def select_where(con, conditions_str, rows, columns_names):
+
+    array_table = [columns_names]
+    conditions = []
+    sql_words = []
+
+    for element in conditions_str:
+
+        if element != "AND" and element != "OR":
+
+            conditions.append(element)
+
+        else:
+            sql_words.append(element)
+
+    if len(conditions) - 1 == len(sql_words):
+
+        if len(conditions) > 2 and "AND" in sql_words and "OR" in sql_words:
+
+            send(con, f"ERROR - Can't find the logic of your statement\n"
+                      f"\t\tYou have both 'AND' and 'OR' ")
+        else:
+
+            selected_rows = dict()
+
+            for condition in conditions:
+
+                column_name, value = condition.split("=")
+
+                for row in rows:
+
+                    row_elements = row.get_elements()
+
+                    for el in row_elements:
+
+                        if el.get_column_name() == column_name and el.get_data() == value:
+
+                            if row not in selected_rows.keys():
+
+                                selected_rows[row] = 1
+
+                            else:
+                                new_value = selected_rows.get(row) + 1
+
+                                selected_rows.update({row: new_value})
+
+            # for row in rows:
+
+            for key in selected_rows:
+
+                if len(sql_words) > 0:
+
+                    if sql_words[0] == "AND":
+
+                        if selected_rows[key] == len(conditions):
+
+                            row_elements = key.get_elements()
+
+                            row_data = []
+
+                            for element in row_elements:
+
+                                if element.get_column_name().upper() in columns_names:
+
+                                    element_data = element.get_data()
+
+                                    row_data.append(element_data)
+
+                            array_table.append(row_data)
+
+                    else:
+
+                        if key in rows:
+
+                            row_elements = key.get_elements()
+
+                            row_data = []
+
+                            for element in row_elements:
+
+                                if element.get_column_name().upper() in columns_names:
+
+                                    element_data = element.get_data()
+
+                                    row_data.append(element_data)
+
+                            array_table.append(row_data)
+
+                else:
+
+                    if key in rows:
+
+                        row_elements = key.get_elements()
+
+                        row_data = []
+
+                        for element in row_elements:
+
+                            if element.get_column_name().upper() in columns_names:
+
+                                element_data = element.get_data()
+
+                                row_data.append(element_data)
+
+                        array_table.append(row_data)
+
+            send(con, f"{array_table}")
+
+    else:
+        send(con, "ERROR - Missing arguments. \n"
+                  "Not enough or too many SQL words between the conditions")
+
+
 def on_sql_select(sql_elements, addr, con, list_users):
 
     if len(sql_elements) >= 4:
 
+        user = get_user(addr, list_users)
+
+        # region Selecting all from the table
         if sql_elements[1] == "*":
 
             if sql_elements[2] == "FROM":
@@ -657,8 +777,6 @@ def on_sql_select(sql_elements, addr, con, list_users):
 
                     send(con, "You are missing '.'")
 
-                user = get_user(addr, list_users)
-
                 database = user.get_database(database_name)
 
                 if database is not None:
@@ -671,10 +789,13 @@ def on_sql_select(sql_elements, addr, con, list_users):
 
                         array_table = []
 
-                        column_names = table.get_columns_names().split()
+                        column_names = table.get_columns_names().upper().split()
 
                         array_table.append(column_names)
 
+                        """ For each row gets the data and appends it to a new array 'row_data'
+                            The 'row data' is appended to the 'array_table'
+                            The 'array_table is being send to the user '"""
                         for row in table_rows:
 
                             row_elements = row.get_elements()
@@ -683,13 +804,30 @@ def on_sql_select(sql_elements, addr, con, list_users):
 
                             for element in row_elements:
 
-                                element_dict = element.get_data()
+                                element_data = element.get_data()
 
-                                row_data.append(element_dict)
+                                row_data.append(element_data)
 
                             array_table.append(row_data)
 
-                        send(con, f"{array_table}")
+                        if len(sql_elements) > 4:
+
+                            if sql_elements[4] == "WHERE":
+
+                                if len(sql_elements) > 5:
+
+                                    conditions_str = sql_elements[5:]
+
+                                    select_where(con, conditions_str, table_rows, column_names)
+
+                                else:
+                                    send(con, "ERROR - 'Not enough arguments after 'WHERE' !'")
+
+                            else:
+                                send(con, f"ERROR - Wrong syntax near '{sql_elements[3]}', expected 'WHERE'")
+
+                        else:
+                            send(con, f"{array_table}")
 
                     else:
                         send(con, f"ERROR - Table '{table_name}' doesn't exist in database '{database_name}' !")
@@ -699,16 +837,325 @@ def on_sql_select(sql_elements, addr, con, list_users):
 
             else:
                 send(con, f"ERROR - Check your syntax near {sql_elements[2]}")
+        # endregion
+
+        # region Selecting some columns from the table
         else:
-            # columns names
-            pass
 
+            # column names from the SQL statement
+            column_names = []
 
+            for element in sql_elements[1:]:
+
+                if element == "FROM":
+
+                    break
+
+                else:
+
+                    element = element.replace(",", "")
+
+                    column_names.append(element)
+
+            # Make a set to prevent the user from typing the same column name 2 times
+            column_names = set(column_names)
+
+            # Used to reach the next element of the SQL statement
+            next_index = len(column_names) + 1
+
+            if sql_elements[next_index] == "FROM":
+
+                next_index += 1
+
+                # It checks whether the SQL statement length is the same as the index of the next element
+                # prevents from accessing an element which doesn't exist
+                if len(sql_elements) - 1 >= next_index:
+
+                    database_name = None
+                    table_name = None
+
+                    try:
+                        database_name, table_name = sql_elements[next_index].split(".")
+
+                    except ValueError:
+
+                        send(con, "ERROR - You are missing '.'")
+
+                        return
+
+                    database = user.get_database(database_name)
+
+                    if database is not None:
+
+                        table = database.get_table(table_name)
+
+                        if table is not None:
+
+                            columns = table.get_columns()
+
+                            table_col_names = []
+
+                            for c in columns:
+
+                                table_col_names.append(c.get_name())
+
+                            # It checks whether the column names from the SQL statement exist in the table or not
+                            for name in column_names:
+
+                                if name not in table_col_names:
+
+                                    send(con, f"ERROR - The column '{name}' "
+                                              f"doesn't exist in table '{database_name}.{table_name}'")
+
+                                    return
+
+                            table_rows = table.get_rows()
+
+                            # this is what it will be send to the user
+                            # It will hold the column names and the data
+                            array_table = []
+
+                            arr_column_names = []
+
+                            # It capitalize the column names for better visibility in the Text Table
+                            for name in column_names:
+
+                                arr_column_names.append(name.upper())
+
+                            array_table.append(arr_column_names)
+
+                            """ It loop tru all table rows.
+                                For each row loops tru all row elements
+                                It checks whether the column name of each element
+                                is in the list of desired columns or not
+                                Then appends the element data to an array 'row_data'
+                                And appends the 'row_data' to the 'array_table'"""
+                            for row in table_rows:
+
+                                row_elements = row.get_elements()
+
+                                row_data = []
+
+                                for element in row_elements:
+
+                                    element_col_name = element.get_column_name()
+
+                                    if element_col_name.upper() in arr_column_names:
+
+                                        element_data = element.get_data()
+
+                                        row_data.append(element_data)
+
+                                if len(row_data) > 0:
+
+                                    array_table.append(row_data)
+
+                            if len(sql_elements) - 1 == next_index:
+
+                                send(con, f"{array_table}")
+
+                            else:
+
+                                next_index += 1
+
+                                if sql_elements[next_index] == "WHERE":
+
+                                    if len(sql_elements) - 1 > next_index:
+
+                                        next_index += 1
+
+                                        conditions_str = sql_elements[next_index:]
+
+                                        list_columns_names = []
+
+                                        for name in reversed(list(column_names)):
+
+                                            upper_name = name.upper()
+
+                                            list_columns_names.append(upper_name)
+
+                                        select_where(con, conditions_str, table_rows, list_columns_names)
+
+                                    else:
+                                        send(con, "ERROR - 'Not enough arguments after 'WHERE' !'")
+
+                                else:
+                                    send(con, f"ERROR - Wrong syntax near '{sql_elements[3]}', expected 'WHERE'")
+
+                        else:
+                            send(con, f"ERROR - Table '{table_name}' doesn't exist in database '{database_name}' !")
+
+                    else:
+                        send(con, f"ERROR - Database '{database_name}' doesn't exist !")
+
+                else:
+                    send(con, "ERROR - Missing arguments !")
+            else:
+                send(con, f"ERROR - Wrong syntax near '{sql_elements[next_index]}' !")
+        # endregion
 
     else:
         send(con, "ERROR - 'Not enough arguments !'")
 
 
 def on_sql_delete(sql_elements, addr, con, list_users):
-    send(con, f"***{sql_elements[0]}***{sql_elements[1]}***{sql_elements[2]}***")
+
+    if len(sql_elements) >= 4:
+
+        user = get_user(addr, list_users)
+
+        # region DELETE * FROM table_name
+        if sql_elements[1] == "*":
+
+            if sql_elements[2] == "FROM":
+
+                database_name = None
+                table_name = None
+
+                try:
+                    database_name, table_name = sql_elements[3].split(".")
+
+                except ValueError:
+
+                    send(con, "ERROR - You are missing '.'")
+
+                database = user.get_database(database_name)
+
+                if database is not None:
+
+                    table = database.get_table(table_name)
+
+                    if table is not None:
+
+                        table.delete_all_rows()
+
+                        save_list_users(list_users)
+
+                        send(con, f"All data in '{database_name} have been successfully deleted'")
+
+                    else:
+                        send(con, f"ERROR - Table '{table_name}' doesn't exist in database '{database_name}' !")
+
+                else:
+                    send(con, f"ERROR - Database '{database_name}' doesn't exist !")
+
+            else:
+                send(con, f"ERROR - Wrong syntax near '{sql_elements[2]}' !")
+        # endregion
+
+        # region DELETE FROM table_name WHERE condition
+        elif sql_elements[1] == "FROM":
+
+            database_name = None
+            table_name = None
+
+            try:
+                database_name, table_name = sql_elements[2].split(".")
+
+            except ValueError:
+
+                send(con, "ERROR - You are missing '.'")
+
+            database = user.get_database(database_name)
+
+            if database is not None:
+
+                table = database.get_table(table_name)
+
+                if table is not None:
+
+                    if sql_elements[3] == "WHERE":
+
+                        conditions = []
+                        sql_words = []
+
+                        for element in sql_elements[4:]:
+
+                            if element != "AND" and element != "OR":
+
+                                conditions.append(element)
+
+                            else:
+                                sql_words.append(element)
+
+                        if len(conditions) - 1 == len(sql_words):
+
+                            if len(conditions) > 2 and "AND" in sql_words and "OR" in sql_words:
+
+                                send(con, f"ERROR - Can't find the logic of your statement\n"
+                                          f"\t\tYou have both 'AND' and 'OR' ")
+                            else:
+
+                                table_rows = table.get_rows()
+
+                                rows_to_delete = dict()
+
+                                for row in table_rows:
+
+                                    row_elements = row.get_elements()
+
+                                    for condition in conditions:
+
+                                        column_name, value = condition.split("=")
+
+                                        for el in row_elements:
+
+                                            if el.get_column_name() == column_name and el.get_data() == value:
+
+                                                if row not in rows_to_delete.keys():
+
+                                                    rows_to_delete[row] = 1
+                                                else:
+                                                    new_value = rows_to_delete.get(row) + 1
+
+                                                    rows_to_delete.update({row: new_value})
+
+                                for key in rows_to_delete:
+
+                                    if len(sql_words) > 0:
+
+                                        if sql_words[0] == "AND":
+
+                                            if rows_to_delete[key] == len(conditions):
+
+                                                table.delete_row(key)
+
+                                                send(con, "A row was deleted successfully !")
+
+                                        else:
+
+                                            if key in table_rows:
+
+                                                table.delete_row(key)
+
+                                                send(con, "A row was deleted successfully !")
+
+                                    else:
+
+                                        if key in table_rows:
+
+                                            table.delete_row(key)
+
+                                            send(con, "A row was deleted successfully !")
+
+                            # save_list_users(list_users)
+
+                        else:
+                            send(con, "ERROR - Missing arguments. \n"
+                                      "Not enough or too many SQL words between the conditions")
+
+                    else:
+                        send(con, f"ERROR - Check your syntax near '{sql_elements[3]}'. Expected 'WHERE' !")
+
+                else:
+                    send(con, f"ERROR - Table '{table_name}' doesn't exist in database '{database_name}' !")
+
+            else:
+                send(con, f"ERROR - Database '{database_name}' doesn't exist !")
+        # endregion
+
+        else:
+            send(con, f"ERROR - Wrong syntax near '{sql_elements[1]}' !")
+    else:
+        send(con, "ERROR - not enough arguments !")
 

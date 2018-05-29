@@ -6,10 +6,13 @@ class RowElement:
         self.__data = data
 
     def get_column_name(self):
+
         return self.__column_name
 
     def set_data(self, data):
+
         self.__data = data
 
     def get_data(self):
+
         return self.__data

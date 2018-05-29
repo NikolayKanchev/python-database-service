@@ -4,10 +4,6 @@ class Row:
         self.__index = index
         self.__elements = []
 
-    def insert(self, element):
-
-        self.__elements.append(element)
-
     def get_element(self, column_name):
 
         for element in self.__elements:
@@ -30,6 +26,14 @@ class Row:
 
         return False
 
+    def get_index(self):
+
+        return self.__index
+
     def get_elements(self):
 
         return self.__elements
+
+    def insert(self, element):
+
+        self.__elements.append(element)

@@ -56,10 +56,6 @@ class Table:
 
         self.__row_index += 1
 
-    def delete_row(self, index):
-
-        self.__rows.pop(index)
-
     def get_row_index(self):
 
         return self.__row_index
@@ -67,5 +63,13 @@ class Table:
     def get_rows(self):
 
         return self.__rows
+
+    def delete_all_rows(self):
+
+        self.__rows = []
+
+    def delete_row(self, row):
+
+        self.__rows.remove(row)
 
 

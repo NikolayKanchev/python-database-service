@@ -6,6 +6,8 @@ HOST = "192.168.56.1"
 PORT = 8000
 
 # region establish the connection
+s = None
+
 try:
     s = socket()
     s.connect((HOST, PORT))
@@ -40,11 +42,11 @@ def new_thread():
 
         arrays = []
 
-        if server_reply[0] == "[":
+        if server_reply[0] == "[" and server_reply[-1] == "]":
 
             server_reply = server_reply[2:-2]
 
-            arr = server_reply.split("], [")
+            arr = server_reply.replace("'", "").split("], [")
 
             for element in arr:
 
@@ -81,3 +83,4 @@ while True:
     if user_input == "quit":
         exit()
 # endregion
+
