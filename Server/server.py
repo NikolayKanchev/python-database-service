@@ -1,11 +1,9 @@
-from pythonDatabase.Model.user import *
+from Model.database import Database
+from Model.table import Table
+from Model.user import *
 from socket import *
 from _thread import *
-
-from pythonDatabase.Server.ReusableFunctions.others import *
-from pythonDatabase.Server.ReusableFunctions.tables import *
-from pythonDatabase.Server.ReusableFunctions.columns import *
-from pythonDatabase.Server.sql_functions import *
+from Server.sql_functions import *
 
 HOST, PORT = '', 8000
 

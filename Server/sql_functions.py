@@ -1,10 +1,9 @@
-from pythonDatabase.Model.column import Column
-from pythonDatabase.Model.database import Database
-from pythonDatabase.Model.row import Row
-from pythonDatabase.Model.row_element import RowElement
-from pythonDatabase.Model.table import Table
-from pythonDatabase.Server.ReusableFunctions.send_receive import *
-from pythonDatabase.Server.ReusableFunctions.users import *
+from Server.sub_functions import *
+from Model.column import Column
+from Model.database import Database
+from Model.row import Row
+from Model.row_element import RowElement
+from Model.table import Table
 
 
 def on_sql_create_database(sql_elements, addr, con, list_users):

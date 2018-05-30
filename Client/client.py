@@ -16,17 +16,17 @@ except error:
     print("Connection to the server failed !!!" + str(error))
 # endregion
 
-# while True:
-#
-#     user_input = input("Type 'sql' for SQL-mode and 'menu' for Menu-mode \n").replace(" ", "")
-#
-#     if user_input.replace(" ", "") == "sql" or user_input == "menu":
-#
-#         break
+while True:
+
+    user_input = input("Type 'sql' for SQL-mode and 'menu' for Menu-mode \n").replace(" ", "")
+
+    if user_input.replace(" ", "") == "sql" or user_input == "menu":
+
+        break
 
 # Sends message to the server to activate the SQL-mode
-# s.send(str.encode(f'{user_input}'))
-s.send(str.encode('sql'))
+s.send(str.encode(f'{user_input}'))
+# s.send(str.encode('sql'))
 
 
 # region New thread, which only listens for server response
