@@ -1,4 +1,4 @@
-from pythonDatabase.ReusableFunctions.users import *
+from pythonDatabase.Server.ReusableFunctions.users import *
 
 
 def receive(con):
@@ -33,11 +33,6 @@ def send_list_tables(addr, con, list_users):
     for table in user_tables:
 
         str_tables_choice += str(table.get_name()) + "\n"
-
-    # for file in files:
-    #     table = file[:-4]
-    #     user_tables.append(table)
-    #     str_tables_choice += table + "\n"
 
     user_choice = send_receive(str_tables_choice + "\n\nOr type 'b' to go back: ", con)
 

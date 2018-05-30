@@ -3,8 +3,8 @@ from pythonDatabase.Model.database import Database
 from pythonDatabase.Model.row import Row
 from pythonDatabase.Model.row_element import RowElement
 from pythonDatabase.Model.table import Table
-from pythonDatabase.ReusableFunctions.send_receive import *
-from collections import Counter
+from pythonDatabase.Server.ReusableFunctions.send_receive import *
+from pythonDatabase.Server.ReusableFunctions.users import *
 
 
 def on_sql_create_database(sql_elements, addr, con, list_users):
@@ -43,6 +43,8 @@ def on_sql_create_table(sql_elements, addr, con, list_users):
 
     # It checks whether there are enough arguments or too many in the SQL
     if len(sql_elements) >= 3:
+        database_name = None
+        table_name = None
 
         try:
             database_name, table_name = sql_elements[2].split(".")

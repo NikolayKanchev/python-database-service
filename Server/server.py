@@ -2,9 +2,9 @@ from pythonDatabase.Model.user import *
 from socket import *
 from _thread import *
 
-from pythonDatabase.ReusableFunctions.others import *
-from pythonDatabase.ReusableFunctions.tables import *
-from pythonDatabase.ReusableFunctions.columns import *
+from pythonDatabase.Server.ReusableFunctions.others import *
+from pythonDatabase.Server.ReusableFunctions.tables import *
+from pythonDatabase.Server.ReusableFunctions.columns import *
 from pythonDatabase.Server.sql_functions import *
 
 HOST, PORT = '', 8000
@@ -15,11 +15,20 @@ s.listen(5)
 list_users = []
 
 
+# region MENU - mode
 # It gets the user input for the table name,
 # It validates the input
 # It creates a new table and appends it to the user tables
 # saves the lists of users
-def on_create_table(addr, con):
+def on_create_table(addr, con, database):
+
+    tables = database.get_list_tables()
+
+    tables_names = ""
+
+    for table in tables:
+
+        tables_names += table.get_name() + " "
 
     while True:
 
@@ -29,126 +38,151 @@ def on_create_table(addr, con):
 
         if user_input == "":
 
-            con.send(str.encode(" Wrong input! Try again !!!"))
+            send(con, " Wrong input! Try again !!!")
+
+        elif user_input in tables_names:
+
+            send(con, f"ERROR - Table '{user_input}' already exist !")
 
         else:
 
-            user = get_user(addr, list_users)
+            # It creates a table and appends it to the database
+            new_table = Table(user_input)
 
-            # region old code
-            #      -------------- creates a file with this name --------------
-            #
-            # print("databases/" + user.get_username() + "/" + user_input + ".txt")
-            #
-            # if not os.path.exists("databases/" + user.get_username() + "/" + user_input + ".txt"):
-            #     with open("databases/" + user.get_username() + "/" + user_input + ".txt", "w"):
-            #         pass/
-            # endregion
-
-            # It creates a table and appends it to the user.tables
-            create_table(user_input, user)
+            database.append_table(new_table)
 
             save_list_users(list_users)
 
-            main_functionality(addr, con)
+            on_manage_database(addr, con)
 
             break
 
 
-def on_drop_table(addr, con):
+def on_drop_table(addr, con, database):
 
-    """ It sends the list of the users tables and returns it back,
-        as well as the chosen of the user table """
-    user_tables, user_choice = send_list_tables(addr, con, list_users)
+    tables = database.get_list_tables()
 
-    # region old code
-    # user = get_user(addr, list_users)
-    # if os.path.exists("databases/" + user.get_username() + "/" + user_choice + ".txt"):
-    #     if os.path.isfile("databases/" + user.get_username() + "/" + user_choice + ".txt"):
-    #         os.remove("databases/" + user.get_username() + "/" + user_choice + ".txt")
-    # endregion
+    arr_table = [["TABLES"]]
 
-    delete_table(user_tables, user_choice)
+    for t in tables:
+        arr_table.append([t.get_name()])
 
-    main_functionality(addr, con)
+    while True:
+
+        table_name = send_receive(str(arr_table), con)
+
+        if table_name == 'b':
+
+            break
+
+        if table_name not in str(arr_table[1:]):
+
+            send(con, f"ERROR - Table '{table_name} doesn't exist in database '{database.get_name()}'")
+
+        else:
+
+            delete_table(tables, table_name)
+
+            save_list_users(list_users)
+
+            break
+
+    on_manage_database(addr, con)
 
 
-def on_add_column(addr, con, table_name):
-
-    user = get_user(addr, list_users)
-
-    table = user.get_table(table_name)
+def on_add_column(addr, con, table, database):
 
     add_column(table, con)
 
     save_list_users(list_users)
 
-    on_manage_existing_table(addr, con)
+    on_manage_existing_table(addr, con, database)
 
 
-def on_remove_column(addr, con, table_name):
+def on_remove_column(addr, con, table, database):
 
-    str_columns, columns_names = get_list_columns(addr, table_name, list_users)
+    columns_names = get_list_columns(con, table)
 
-    user_choice = send_receive(str_columns + "\nChoose the column that you want to delete"
-                                             "\nOR type 'b' and press enter to go back: ", con)
+    str_to_send = "Choose a column to delete or enter 'b' to go back"
 
     while True:
 
+        user_choice = send_receive(str_to_send, con)
+
         if user_choice == "b":
+
             break
 
         if user_choice in columns_names:
+
+            column = table.get_column(user_choice)
+
+            table.delete_column(column)
+
+            save_list_users(list_users)
+
+            on_manage_existing_table(addr, con, database)
+
             break
 
-        user_choice = send_receive("Wrong input \n Try again: "
-                                   + user_choice, con)
-
-    user = get_user(addr, list_users)
-
-    table = user.get_table(table_name)
-
-    table.delete_column(user_choice)
-
-    save_list_users(list_users)
-
-    on_manage_existing_table(addr, con)
+        str_to_send = "Wrong input !!!  Try again: "
 
 
-def on_getting_columns(addr, con, table_name):
+def on_getting_columns(addr, con, table, database):
 
-    str_columns, columns_names = get_list_columns(addr, table_name, list_users)
-
-    user_choice = send_receive(str_columns + "\n\nType 'b' and press enter to go back: ", con)
-
-    while user_choice != 'b':
-        user_choice = send_receive("Wrong input \n Type 'b' and press enter to go back: ", con)
-
-    on_manage_existing_table(addr, con)
-
-    return user_choice
-
-
-def on_insert_row(addr, con, table_name):
-    pass
-
-
-def on_remove_row(addr, con, table_name):
-    pass
-
-
-def on_get_row(addr, con, table_name):
-    pass
-
-
-def on_manage_existing_table(addr, con):
+    get_list_columns(con, table)
 
     while True:
-        user_tables, table_name = send_list_tables(addr, con, list_users)
+
+        user_choice = send_receive("Enter 'b' to go back", con)
+
+        if user_choice == "b":
+
+            on_manage_existing_table(addr, con, database)
+
+            break
+
+
+def on_insert_row(addr, con, table_name, database):
+    pass
+
+
+def on_remove_row(addr, con, table_name, database):
+    pass
+
+
+def on_get_row(addr, con, table_name, database):
+    pass
+
+
+def on_manage_existing_table(addr, con, database):
+
+    tables = database.get_list_tables()
+
+    arr_table = [["TABLES"]]
+
+    for t in tables:
+
+        arr_table.append([t.get_name()])
+
+    while True:
+
+        table_name = send_receive(str(arr_table), con)
 
         if table_name == 'b':
+
             main_functionality(addr, con)
+
             break
+
+        if table_name in str(arr_table[1:]):
+
+            break
+
+        else:
+            send(con, f"Table '{table_name}' doesn't exist ! Choose an existing one !")
+
+    while True:
 
         user_choice = send_receive(" Choose an option:\n"
                                    "1) Add a column\n"
@@ -159,67 +193,212 @@ def on_manage_existing_table(addr, con):
                                    "6) Get a row\n"
                                    "'b' - to go back \n", con)
 
+        table = database.get_table(table_name)
+
         if user_choice == '1':
-            on_add_column(addr, con, table_name)
+
+            on_add_column(addr, con, table, database)
+
             break
 
         elif user_choice == '2':
-            on_remove_column(addr, con, table_name)
+
+            on_remove_column(addr, con, table, database)
+
             break
 
         elif user_choice == '3':
-            on_getting_columns(addr, con, table_name)
+
+            on_getting_columns(addr, con, table, database)
+
             break
 
         elif user_choice == '4':
-            on_insert_row(addr, con, table_name)
+
+            on_insert_row(addr, con, table_name, database)
+
             break
 
         elif user_choice == '5':
-            on_remove_row(addr, con, table_name)
+
+            on_remove_row(addr, con, table_name, database)
+
             break
 
         elif user_choice == '6':
-            on_get_row(addr, con, table_name)
+
+            on_get_row(addr, con, table_name, database)
+
             break
 
         elif user_choice == 'b':
-            on_manage_existing_table(addr, con)
+
+            on_manage_existing_table(addr, con, database)
+
             break
 
         else:
             print(" Wrong input from " + str(addr))
+
             con.send(str.encode(" Wrong input. Try again !!!"))
 
 
-def main_functionality(client_address, con):
+def choose_database(addr, con):
+
+    user = get_user(addr, list_users)
+
+    user_databases = user.get_list_databases()
+
+    arr_table = [["DATABASES"]]
+
+    for d in user_databases:
+
+        arr_table.append([d.get_name()])
+
+    while True:
+
+        user_choice = send_receive(f"{arr_table}", con)
+
+        if user_choice in str(arr_table[1:]):
+
+            break
+
+        if user_choice == "b":
+
+            main_functionality(addr, con)
+
+            break
+
+        else:
+
+            arr_table = f"Error - Database {user_choice} doesn't exist !"
+
+    database = user.get_database(user_choice)
+
+    return database
+
+
+def on_manage_database(addr, con):
+
+    database = choose_database(addr, con)
 
     while True:
         user_choice = send_receive(" Choose an option:\n"
                                    "1) Create table\n"
                                    "2) Drop table\n"
                                    "3) Manage existing table\n"
-                                   "'out' - to log out \n", con)
+                                   "'b' - to go back \n", con)
 
         if user_choice == '1':
-            on_create_table(client_address, con)
+
+            on_create_table(addr, con, database)
+
             break
 
         elif user_choice == '2':
-            on_drop_table(client_address, con)
+
+            on_drop_table(addr, con, database)
+
             break
 
         elif user_choice == '3':
-            on_manage_existing_table(client_address, con)
+
+            on_manage_existing_table(addr, con, database)
+
+            break
+
+        elif user_choice == 'b':
+
+            main_functionality(addr, con)
+
+            break
+
+        else:
+            print(" Wrong input from " + str(addr))
+
+            con.send(str.encode(" Wrong input. Try again !!!"))
+    pass
+
+
+def on_create_database(addr, con):
+
+    user = get_user(addr, list_users)
+
+    databases = user.get_list_databases()
+
+    while True:
+
+        database_name = send_receive("Type database name: ", con)
+
+        database = user.get_database(database_name)
+
+        if database not in databases:
+
+            new_database = Database(database_name, [])
+
+            user.create_database(new_database)
+
+            save_list_users(list_users)
+
+            main_functionality(addr, con)
+
+            break
+
+        else:
+            send(con, f"Database '{database_name}' already exist! ")
+
+
+def on_drop_database(addr, con):
+
+    database = choose_database(addr, con)
+
+    user = get_user(addr, list_users)
+
+    user.drop_database(database)
+
+    save_list_users(list_users)
+
+    main_functionality(addr, con)
+
+
+def main_functionality(client_address, con):
+
+    while True:
+        user_choice = send_receive(" Choose an option:\n"
+                                   "1) Manage database\n"
+                                   "2) Create database\n"
+                                   "3) Drop database\n"
+                                   "'out' - to log out \n", con)
+
+        if user_choice == '1':
+
+            on_manage_database(client_address, con)
+
+            break
+
+        elif user_choice == '2':
+
+            on_create_database(client_address, con)
+
+            break
+
+        elif user_choice == '3':
+
+            on_drop_database(client_address, con)
+
             break
 
         elif user_choice == 'out':
+
             menu(client_address, con)
+
             break
 
         else:
             print(" Wrong input from " + str(client_address))
             con.send(str.encode(" Wrong input. Try again !!!"))
+
+# endregion
 
 
 # region Login - validates the username and password
@@ -480,39 +659,49 @@ def on_sql_mode(addr, con):
 
                     continue
 
-        except IndexError as ie:
+        except IndexError:
 
             send(con, "ERROR - Not enough arguments !")
-
-
-
 # endregion
 
 
 # region new Thread - Menu or Sql mode
 def new_thread(adr, connection):
+
     while True:
+
         message = receive(connection)
+
         print("Received from " + str(adr) + ": ", message)
-        if message == "1":
+
+        if message == "menu":
+
             menu(adr, connection)
+
             break
-        elif message == "2":
+
+        elif message == "sql":
+
             on_sql_mode(adr, connection)
+
             break
+
         elif message == "quit":
+
             exit()
 # endregion
 
 
 # region Accepts the request and starts a new thread for each connection
 def accept_connection():
+
     print("MyDB server is listening on port: ", PORT)
 
     while True:
+
         conn, adr = s.accept()
 
-        print(adr, "successfully connected to the server !!!")
+        print(adr, " Successfully connected to the server !!! ")
 
         start_new_thread(new_thread, (adr, conn, ))
 # endregion

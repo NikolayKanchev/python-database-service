@@ -4,6 +4,7 @@ class Database:
         self.__list_tables = list_tables
 
     def get_name(self):
+
         return self.__database_name
 
     def rename(self, new_db_name):

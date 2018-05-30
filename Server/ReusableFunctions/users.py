@@ -1,29 +1,40 @@
-from pythonDatabase.ReusableFunctions.send_receive import *
-from pythonDatabase.ReusableFunctions.pass_hashing import *
+from pythonDatabase.Server.ReusableFunctions.send_receive import *
+from pythonDatabase.Server.ReusableFunctions.pass_hashing import *
 import pickle
 
 
 def load_list_users():
+
     try:
         with open("users.dat", "rb") as f:
+
             list_users = pickle.load(f)
-    except:
+
+    except Exception:
+
         list_users = []
+
     return list_users
 
 
 def save_list_users(list_users):
+
     with open("users.dat", "wb") as f:
+
         pickle.dump(list_users, f)
 
 
 def get_user(addr, list_users):
+
     for user in list_users:
+
         if addr == user.get_address():
+
             return user
 
 
 def validate_user(list_users, username, password, addr):
+
     value_to_return = False
 
     for user in list_users:
@@ -53,6 +64,7 @@ def validate_user_exist(sql_elements, addr, con, list_users):
 
         else:
             send_receive(f"Check your syntax near {sql_elements[1]}", con)
+
             return
 
     if sql_elements[2]:
@@ -65,6 +77,7 @@ def validate_user_exist(sql_elements, addr, con, list_users):
 
         else:
             send_receive(f"Check your syntax near {sql_elements[2]}", con)
+
             return
 
     valid_user = validate_user(list_users, username, password, addr)

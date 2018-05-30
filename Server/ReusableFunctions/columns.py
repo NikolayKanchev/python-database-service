@@ -1,7 +1,9 @@
-from pythonDatabase.ReusableFunctions.send_receive import *
+from pythonDatabase.Model.column import Column
+from pythonDatabase.Server.ReusableFunctions.send_receive import *
 
 
 def add_column(table, con):
+
     column_name = send_receive(" Enter column name: ", con)
 
     user_choice = send_receive(" Choose a column type: \n"
@@ -13,41 +15,47 @@ def add_column(table, con):
     while True:
 
         if user_choice == '1':
+
             column_type = 'str'
+
             break
 
         if user_choice == '2':
+
             column_type = 'int'
+
             break
 
         if user_choice == '3':
+
             column_type = 'float'
+
             break
 
         if user_choice == '4':
+
             column_type = 'bool'
+
             break
 
         user_choice = send_receive(" Wrong input, try again with number from 1 to 4", con)
 
-    table.add_column(column_name, column_type)
+    new_column = Column(column_name, False, False, column_type)
+
+    table.add_column(new_column)
 
 
-def get_list_columns(addr, table_name, list_users):
+def get_list_columns(con, table):
 
-    user = get_user(addr, list_users)
+    columns = table.get_columns()
 
-    table = user.get_table(table_name)
+    arr_table = [["COLUMNS"]]
 
-    columns_names = table.get_columns_names()
+    for c in columns:
+        arr_table.append([c.get_name()])
 
-    str_columns = " Columns in " + table_name + " :\n"
+    send(con, f"{arr_table}")
 
-    for column_name in columns_names:
+    return str(arr_table[1:])
 
-        column_type = table.get_column_type(column_name)
-
-        str_columns += str(column_type) + "\t" + str(column_name) + "\n"
-
-    return str_columns, columns_names
 

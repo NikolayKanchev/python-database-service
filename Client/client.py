@@ -11,34 +11,34 @@ s = None
 try:
     s = socket()
     s.connect((HOST, PORT))
+
 except error:
     print("Connection to the server failed !!!" + str(error))
 # endregion
 
-
-# region gets the user input and sends it to the server
-s.send(str.encode('2'))
-
 # while True:
-#     user_input = input("Choose an option:\n"
-#                         "1) Menu\n"
-#                         "2) Write SQL\n")
-#     if user_input == '1' or user_input == '2':
-#         s.send(str.encode(user_input))
+#
+#     user_input = input("Type 'sql' for SQL-mode and 'menu' for Menu-mode \n").replace(" ", "")
+#
+#     if user_input.replace(" ", "") == "sql" or user_input == "menu":
+#
 #         break
-# endregion
+
+# Sends message to the server to activate the SQL-mode
+# s.send(str.encode(f'{user_input}'))
+s.send(str.encode('sql'))
 
 
-# region function for the new thread, which only listens for server response
+# region New thread, which only listens for server response
 def new_thread():
 
-    server_reply = str(s.recv(1024), "UTF-8")
-
-    print(f"< MyDB > { server_reply }")
-
-    while server_reply != "":
+    while True:
 
         server_reply = str(s.recv(1024), "UTF-8")
+
+        if server_reply == "":
+
+            break
 
         arrays = []
 
@@ -68,19 +68,24 @@ def new_thread():
 
 
 t1 = threading.Thread(target=new_thread)
+
 t1.start()
 # endregion
 
 
 # region only sends the user input to the server (Working on the main thread)
 while True:
+
     user_input = input()
+
     if user_input == "":
+
         continue
 
     s.send(str.encode(user_input))
 
     if user_input == "quit":
+
         exit()
 # endregion
 
