@@ -1,15 +1,16 @@
-from Model.database import Database
-from Model.table import Table
+from _thread import start_new_thread
+
 from Model.user import *
 from socket import *
-from _thread import *
 from Server.sql_functions import *
 
 HOST, PORT = '', 8000
 
+# It creates a stream socket in the Internet domain
 s = socket(AF_INET, SOCK_STREAM)
 s.bind((HOST, PORT))
 s.listen(5)
+
 list_users = []
 
 
@@ -482,18 +483,14 @@ def on_register(addr, conn):
 def menu(address, con):
     user_choice = send_receive(" Choose an option:\n"
                                "1) Login\n"
-                               "2) Register\n"
-                               "'quit' - to exit \n", con)
-    print("<<< MyDB >>> Waiting for client choice - 1) Login - 2) Register - 3) Quit Register ......")
+                               "2) Register\n", con)
+    print("<<< MyDB >>> Waiting for client choice - 1) Login - 2) Register ")
 
     if user_choice == '1':
         on_login(address, con)
 
     elif user_choice == '2':
         on_register(address, con)
-
-    elif user_choice == 'quit':
-        pass # -------------------------------- How to exit? -------------------------------------
 
     else:
         menu(address, con)
@@ -684,9 +681,6 @@ def new_thread(adr, connection):
 
             break
 
-        elif message == "quit":
-
-            exit()
 # endregion
 
 
@@ -702,6 +696,7 @@ def accept_connection():
         print(adr, " Successfully connected to the server !!! ")
 
         start_new_thread(new_thread, (adr, conn, ))
+        # threading.Thread(target=new_thread, args=(adr, conn, ), daemon=True)
 # endregion
 
 

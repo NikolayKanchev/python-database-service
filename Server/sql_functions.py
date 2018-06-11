@@ -923,6 +923,8 @@ def on_sql_select(sql_elements, addr, con, list_users):
 
                                 arr_column_names.append(name.upper())
 
+                            arr_column_names.reverse()
+
                             array_table.append(arr_column_names)
 
                             """ It loop tru all table rows.

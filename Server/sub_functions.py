@@ -1,10 +1,14 @@
 import pickle
-
+import hashlib
 from Model.column import Column
 from Model.table import Table
+import threading
+
+lock = threading.Lock()
 
 
 def hash_password(password):
+
     hashed_pass = ""
     counter = 0
     salt = "The best hashing ever !!!"
@@ -13,16 +17,18 @@ def hash_password(password):
         hashed_pass = hashed_pass + chr(ord(symbol) + ord(str(len(password))) + 1122)
         hashed_pass = hashed_pass + salt[counter]
         counter = counter + 1
-    return hashed_pass
+
+    return hashlib.md5(hashed_pass.encode("utf-8")).hexdigest()
 
 
 # region Users
 def load_list_users():
 
     try:
-        with open("users.dat", "rb") as f:
+        with lock:
+            with open("users.dat", "rb") as f:
 
-            list_users = pickle.load(f)
+                list_users = pickle.load(f)
 
     except Exception:
 
@@ -33,9 +39,11 @@ def load_list_users():
 
 def save_list_users(list_users):
 
-    with open("users.dat", "wb") as f:
+    with lock:
 
-        pickle.dump(list_users, f)
+        with open("users.dat", "wb") as f:
+
+            pickle.dump(list_users, f)
 
 
 def get_user(addr, list_users):
@@ -177,7 +185,7 @@ def receive(con):
 
     b_array = con.recv(1024)
 
-    received_str = b_array.decode("UTF-8")  # str = str(b_array, "UTF-8") - this works too
+    received_str = b_array.decode("UTF-8")
 
     return received_str
 

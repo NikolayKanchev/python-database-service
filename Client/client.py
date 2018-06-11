@@ -2,90 +2,87 @@ import threading
 from socket import *
 from texttable import Texttable
 
-HOST = "192.168.56.1"
+# HOST = "192.168.56.1"
+HOST = "localhost"
 PORT = 8000
 
 # region establish the connection
-s = None
+s = socket()
 
 try:
-    s = socket()
     s.connect((HOST, PORT))
 
-except error:
-    print("Connection to the server failed !!!" + str(error))
+except ConnectionRefusedError:
+
+    print("Connection refused!!!")
 # endregion
 
-while True:
-
-    user_input = input("Type 'sql' for SQL-mode and 'menu' for Menu-mode \n").replace(" ", "")
-
-    if user_input.replace(" ", "") == "sql" or user_input == "menu":
-
-        break
-
-# Sends message to the server to activate the SQL-mode
-s.send(str.encode(f'{user_input}'))
-# s.send(str.encode('sql'))
-
-
-# region New thread, which only listens for server response
-def new_thread():
+else:
 
     while True:
 
-        server_reply = str(s.recv(1024), "UTF-8")
+        user_input = input("Type 'sql' for SQL-mode and 'menu' for Menu-mode \n").replace(" ", "")
 
-        if server_reply == "":
+        if user_input.replace(" ", "") == "sql" or user_input == "menu":
 
             break
 
-        arrays = []
+    s.send(str.encode(f'{user_input}'))
+    # s.send(str.encode('sql'))
 
-        if server_reply[0] == "[" and server_reply[-1] == "]":
+    # region New thread, which only listens for server response
+    def new_thread():
 
-            server_reply = server_reply[2:-2]
+        while True:
 
-            arr = server_reply.replace("'", "").split("], [")
+            server_reply = str(s.recv(1024), "UTF-8")
 
-            for element in arr:
+            if server_reply == "":
 
-                row_arr = element.split(", ")
+                break
 
-                arrays.append(row_arr)
+            arrays = []
 
-        if len(arrays) != 0:
+            if server_reply[0] == "[" and server_reply[-1] == "]":
 
-            t = Texttable()
+                server_reply = server_reply[2:-2]
 
-            t.add_rows(arrays)
+                arr = server_reply.replace("'", "").split("], [")
 
-            print(t.draw())
+                for element in arr:
 
-        else:
+                    row_arr = element.split(", ")
 
-            print(f"< MyDB > { server_reply }")
+                    arrays.append(row_arr)
+
+            if len(arrays) != 0:
+
+                t = Texttable()
+
+                t.add_rows(arrays)
+
+                print(t.draw())
+
+            else:
+
+                print(f"< MyDB > { server_reply }")
 
 
-t1 = threading.Thread(target=new_thread)
+    t1 = threading.Thread(target=new_thread)
 
-t1.start()
-# endregion
+    t1.start()
+    # endregion
 
+    # region only sends the user input to the server (Working on the main thread)
+    while True:
 
-# region only sends the user input to the server (Working on the main thread)
-while True:
+        user_input = input()
 
-    user_input = input()
+        if user_input == "":
 
-    if user_input == "":
+            continue
 
-        continue
+        s.send(str.encode(user_input))
 
-    s.send(str.encode(user_input))
-
-    if user_input == "quit":
-
-        exit()
-# endregion
+    # endregion
 
